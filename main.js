@@ -27,19 +27,30 @@ app.get('/data', function (req, res) {
     })
 });
 
-// post data from esp32
-app.post('/post_data', function (req, res) {
-  console.log("req.body",req.body)
- var date_json = { date : new Date()}
- var insert_data = Object.assign(date_json, req.body);
- console.log(insert_data)
-  MongoClient.connect(url, function(err, db) { 
-    db.db(dbName).collection(colName).insertOne(insert_data, function(err, result) {
-      console.log("1 document inserted");
-      res.send(result.value)
-      db.close();
-    });
+// 記事の内容更新. Article.vue
+app.post('/data', function (req, res) {
+  console.log(req.body)
+
+  var year  = new Date().getFullYear();
+  var month = new Date().getMonth();
+  var day = new Date().getDate();
+  var hours = new Date().getHours();
+  var minutes = Math.floor( new Date().getMinutes() / 10 ) * 10; // 分の小数点切り捨て
+
+  var query_date = new Date(year,month,day,hours,minutes)
+  console.log(year,month,day,hours,minutes)
+
+  var insert_data = Object.assign({ date : query_date }, req.body);
+
+  // 10分間来たデータは同じデータ点として登録．
+  MongoClient.connect(url, function(err, db) {
+  db.db(dbName).collection(colName)
+  .updateOne({ date : query_date }, { $set:  insert_data }, {returnOriginal: false,upsert: true} , function(err, result) {
+    db.close();
+    console.log(result)
+    res.send(result)
   });
+}); 
 });
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
